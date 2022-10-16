@@ -16,10 +16,13 @@ fun main(args: Array<String>) {
 
 private fun createAndStartServer(sn: SimpleNetwork) {
     println("========= Start up server ========= ")
+    val clients: MutableMap<String, EndPoint> = HashMap()
+    var freeId = 0
     val connected = sn.provide(address, object : ConnectionHandler {
 
         override fun onMsg(endPoint: EndPoint, msg: String) {
             println("SERVER, got msg: '$msg'")
+            clients.values.forEach { client -> client.sendMsg("<$msg>") }
         }
 
         override fun onClose(endPoint: EndPoint) {
@@ -27,7 +30,10 @@ private fun createAndStartServer(sn: SimpleNetwork) {
         }
 
         override fun onOpen(endPoint: EndPoint) {
+            freeId += 1
+            clients.put(freeId.toString(), endPoint)
             println("SERVER: client connected for address $address")
+            endPoint.sendMsg("id: $freeId")
         }
 
     })
@@ -57,8 +63,13 @@ private fun createAndStartClient2(sn: SimpleNetwork): EndPoint? {
     println("========= Start up client 2 ========= ")
     val clientEndPoint2 = sn.connect(address,
         object : ConnectionHandler {
+            var responded = false
             override fun onMsg(endPoint: EndPoint, msg: String) {
                 println("CLIENT2: got msg: '$msg'")
+                if (!responded) {
+                    responded = true
+                    endPoint.sendMsg("Hi there, I like to talk a lot.")
+                }
             }
 
             override fun onClose(endPoint: EndPoint) {
