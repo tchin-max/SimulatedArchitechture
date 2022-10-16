@@ -1,4 +1,4 @@
-class ChatClient(sn: SimpleNetwork, name: String) {
+class ChatClient(sn: SimpleNetwork, name: String, onData: (endPoint: EndPoint, data: Any) -> Unit = { _, _ -> }) {
     val clientEndPoint: EndPoint?
     init {
         println("========= Start up client 1 ========= ")
@@ -14,6 +14,7 @@ class ChatClient(sn: SimpleNetwork, name: String) {
                         is AssignId -> println("$name I got the id: '${data.id}'")
                         is SendMessage -> println("$name I got the message: '${data.msg}' from client with id '${data.fromId}'")
                     }
+                    onData(endPoint, data)
                 }
 
                 override fun onClose(endPoint: EndPoint) {
