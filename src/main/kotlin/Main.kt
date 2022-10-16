@@ -12,7 +12,7 @@ fun main(args: Array<String>) {
     println("========= Sending data ========= ")
     clientEndPoint1?.sendMsg("Test 1")
     clientEndPoint2?.sendMsg("Test 2")
-    clientEndPoint2?.sendData(SendMessage("Hallo, ich bin 2, wer bist Du?", 1))
+    clientEndPoint2?.sendData(SendMessage("Hallo, ich bin 2, wer bist Du?", 1, 2))
 }
 
 private fun createAndStartServer(sn: SimpleNetwork) {
@@ -59,16 +59,15 @@ private fun createAndStartClient1(sn: SimpleNetwork): EndPoint? {
     val clientEndPoint1 = sn.connect(address,
         object : ConnectionHandler {
             override fun onMsg(endPoint: EndPoint, msg: String) {
-                if (msg.startsWith("id: ")) {
-                    val id = Integer.parseInt(msg.substring(4))
-                    println("CLIENT1: I got the id: $id")
-                    return
-                }
                 println("CLIENT1: got msg: '$msg'")
             }
 
             override fun onData(endPoint: EndPoint, data: Any) {
                 println("CLIENT1: got data: '$data'")
+                when (data) {
+                    is AssignId -> println("CLIENT1: I got the id: '${data.id}'")
+                    is SendMessage -> println("CLIENT1: I got the message: '${data.msg}' from client with id '${data.fromId}'")
+                }
             }
 
             override fun onClose(endPoint: EndPoint) {

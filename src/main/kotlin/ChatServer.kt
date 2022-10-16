@@ -16,7 +16,8 @@ class ChatServer(sn: SimpleNetwork, address: String) {
                 println("SERVER ($address), got data: '$data'")
                 when (data) {
                     is SendMessage -> {
-                        val id = data.id
+                        // TODO: validate if the fromId is correct?
+                        val id = data.toId
                         val client = clients[id.toString()]
                         client?.sendData(data)
                     }
@@ -43,4 +44,4 @@ class ChatServer(sn: SimpleNetwork, address: String) {
 }
 
 data class AssignId(val id: Int)
-data class SendMessage(val msg: String, val id: Int)
+data class SendMessage(val msg: String, val toId: Int, val fromId: Int)
