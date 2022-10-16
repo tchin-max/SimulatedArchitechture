@@ -1,6 +1,6 @@
-class ChatClient(sn: SimpleNetwork, name: String, onData: (endPoint: EndPoint, data: Any) -> Unit = { _, _ -> }) {
-    val clientEndPoint: EndPoint?
+class ChatClient(sn: SimpleNetwork, val name: String, onData: (endPoint: EndPoint, data: Any) -> Unit = { _, _ -> }) {
     var id: Int = -1
+    private val clientEndPoint: EndPoint?
     init {
         println("========= Start up client 1 ========= ")
         clientEndPoint = sn.connect(address,
