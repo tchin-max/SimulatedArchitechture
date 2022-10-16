@@ -12,7 +12,7 @@ fun main(args: Array<String>) {
     println("========= Sending data ========= ")
     clientEndPoint1?.sendMsg("Test 1")
     clientEndPoint2?.sendMsg("Test 2")
-    clientEndPoint2?.sendData(5)
+    clientEndPoint2?.sendData(SendMessage("Hallo, ich bin 2, wer bist Du?", 1))
 }
 
 private fun createAndStartServer(sn: SimpleNetwork) {

@@ -10,13 +10,17 @@ class ChatServer(sn: SimpleNetwork, address: String) {
 
             override fun onMsg(endPoint: EndPoint, msg: String) {
                 println("SERVER ($address), got msg: '$msg'")
-
-                // TODO: parse message, so that we can send it to the correct clients the massage
-
             }
 
             override fun onData(endPoint: EndPoint, data: Any) {
                 println("SERVER ($address), got data: '$data'")
+                when (data) {
+                    is SendMessage -> {
+                        val id = data.id
+                        val client = clients[id.toString()]
+                        client?.sendData(data)
+                    }
+                }
             }
 
             override fun onClose(endPoint: EndPoint) {
@@ -35,7 +39,6 @@ class ChatServer(sn: SimpleNetwork, address: String) {
         if (connected) {
             println("SERVER ($address) started, listing to address $address")
         }
-
     }
 }
 
