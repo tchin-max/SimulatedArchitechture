@@ -16,13 +16,20 @@ fun main(args: Array<String>) {
 
 private fun createAndStartServer(sn: SimpleNetwork) {
     println("========= Start up server ========= ")
-    val clients: MutableMap<String, EndPoint> = HashMap()
-    var freeId = 0
+    /* // 'Send to all Server'
+    // Map stores the EndPoints for the ids assigned to the clients
+       val clients: MutableMap<String, EndPoint> = HashMap()
+       var freeId = 1 // the id used for the next client */
     val connected = sn.provide(address, object : ConnectionHandler {
 
         override fun onMsg(endPoint: EndPoint, msg: String) {
             println("SERVER, got msg: '$msg'")
-            clients.values.forEach { client -> client.sendMsg("<$msg>") }
+
+            // Simple Echo Server
+            endPoint.sendMsg("<$msg>")
+
+            /* 'Send to all server with ids'
+              clients.values.forEach { client -> client.sendMsg("<$msg>") } */
         }
 
         override fun onClose(endPoint: EndPoint) {
@@ -30,10 +37,11 @@ private fun createAndStartServer(sn: SimpleNetwork) {
         }
 
         override fun onOpen(endPoint: EndPoint) {
-            freeId += 1
-            clients.put(freeId.toString(), endPoint)
             println("SERVER: client connected for address $address")
-            endPoint.sendMsg("id: $freeId")
+            /* // 'Send to all server with ids'
+               clients.put(freeId.toString(), endPoint)
+               endPoint.sendMsg("id: $freeId")
+               freeId += 1 */
         }
 
     })
@@ -46,6 +54,11 @@ private fun createAndStartClient1(sn: SimpleNetwork): EndPoint? {
     val clientEndPoint1 = sn.connect(address,
         object : ConnectionHandler {
             override fun onMsg(endPoint: EndPoint, msg: String) {
+                if (msg.startsWith("id: ")) {
+                    val id = Integer.parseInt(msg.substring(4))
+                    println("CLIENT1: I got the id: $id")
+                    return
+                }
                 println("CLIENT1: got msg: '$msg'")
             }
 
@@ -65,6 +78,11 @@ private fun createAndStartClient2(sn: SimpleNetwork): EndPoint? {
         object : ConnectionHandler {
             var responded = false
             override fun onMsg(endPoint: EndPoint, msg: String) {
+                if (msg.startsWith("id: ")) {
+                    val id = Integer.parseInt(msg.substring(4))
+                    println("CLIENT2: I got the id: $id")
+                    return
+                }
                 println("CLIENT2: got msg: '$msg'")
                 if (!responded) {
                     responded = true
