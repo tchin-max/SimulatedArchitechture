@@ -1,5 +1,6 @@
 class ChatClient(sn: SimpleNetwork, name: String, onData: (endPoint: EndPoint, data: Any) -> Unit = { _, _ -> }) {
     val clientEndPoint: EndPoint?
+    var id: Int = -1
     init {
         println("========= Start up client 1 ========= ")
         clientEndPoint = sn.connect(address,
@@ -11,7 +12,10 @@ class ChatClient(sn: SimpleNetwork, name: String, onData: (endPoint: EndPoint, d
                 override fun onData(endPoint: EndPoint, data: Any) {
                     println("$name got data: '$data'")
                     when (data) {
-                        is AssignId -> println("$name I got the id: '${data.id}'")
+                        is AssignId -> {
+                            id = data.id
+                            println("$name I got the id: '${data.id}'")
+                        }
                         is SendMessage -> println("$name I got the message: '${data.msg}' from client with id '${data.fromId}'")
                     }
                     onData(endPoint, data)
@@ -25,6 +29,13 @@ class ChatClient(sn: SimpleNetwork, name: String, onData: (endPoint: EndPoint, d
                     println("$name connection established.")
                 }
             })
+    }
+
+    // high level chat api for clients
+    fun sendMessage(toId: Int, msg: String) {
+        if (id >= 0) {
+            this.sendData(SendMessage(msg, toId, 5))
+        }
     }
 
     // low level command interface

@@ -3,7 +3,8 @@ class ChatServer(sn: SimpleNetwork, address: String) {
         println("========= Start up chat server at $address ========= ")
         // 'Send to all Server'
         // Map stores the EndPoints for the ids assigned to the clients
-        val clients: MutableMap<String, EndPoint> = HashMap()
+        val clients: MutableMap<Int, EndPoint> = HashMap()
+        val endPointsToIds: MutableMap<EndPoint, Int> = HashMap()
         var freeId = 1 // the id used for the next client
 
         val connected = sn.provide(address, object : ConnectionHandler {
@@ -16,10 +17,13 @@ class ChatServer(sn: SimpleNetwork, address: String) {
                 println("SERVER ($address), got data: '$data'")
                 when (data) {
                     is SendMessage -> {
-                        // TODO: validate if the fromId is correct?
-                        val id = data.toId
-                        val client = clients[id.toString()]
-                        client?.sendData(data)
+                        val toId = data.toId
+                        val client = clients[toId]
+                        val fromId = endPointsToIds[endPoint]
+                        // ignore if toId is wrong. Another solution: patch it??
+                        if (fromId == data.fromId) {
+                            client?.sendData(data)
+                        }
                     }
                 }
             }
@@ -31,7 +35,8 @@ class ChatServer(sn: SimpleNetwork, address: String) {
             override fun onOpen(endPoint: EndPoint) {
                 println("SERVER ($address): client connected.")
                 // 'Send to all server with ids'
-                clients.put(freeId.toString(), endPoint)
+                clients.put(freeId, endPoint)
+                endPointsToIds.put(endPoint, freeId)
                 endPoint.sendData(AssignId(freeId))
                 freeId += 1
             }

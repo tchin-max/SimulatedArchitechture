@@ -18,6 +18,6 @@ fun main(args: Array<String>) {
     println("========= Sending data ========= ")
     c1.sendData("Test 1")
     c2.sendData("Test 2")
-    c2.sendData(SendMessage("Hallo, ich bin 2, wer bist Du?", 1, 2))
-    c1.sendData(SendMessage("Hallo, ich bin 1, wer bist Du?", 2, 1))
+    c2.sendMessage(1, "Hello, ich bin die ${c2.id}, wer bist Du?")
+    c1.sendMessage(2, "Hello, ich bin die ${c1.id}. Wie geht es Dir?")
 }
