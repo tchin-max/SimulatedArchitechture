@@ -15,45 +15,6 @@ fun main(args: Array<String>) {
     clientEndPoint2?.sendData(SendMessage("Hallo, ich bin 2, wer bist Du?", 1, 2))
 }
 
-private fun createAndStartServer(sn: SimpleNetwork) {
-    println("========= Start up server ========= ")
-    /* // 'Send to all Server'
-    // Map stores the EndPoints for the ids assigned to the clients
-       val clients: MutableMap<String, EndPoint> = HashMap()
-       var freeId = 1 // the id used for the next client */
-    val connected = sn.provide(address, object : ConnectionHandler {
-
-        override fun onMsg(endPoint: EndPoint, msg: String) {
-            println("SERVER, got msg: '$msg'")
-
-            // Simple Echo Server
-            endPoint.sendMsg("<$msg>")
-
-            /* 'Send to all server with ids'
-              clients.values.forEach { client -> client.sendMsg("<$msg>") } */
-        }
-
-        override fun onData(endPoint: EndPoint, data: Any) {
-            println("SERVER, got msg: '$data'")
-        }
-
-        override fun onClose(endPoint: EndPoint) {
-            println("SERVER: closed")
-        }
-
-        override fun onOpen(endPoint: EndPoint) {
-            println("SERVER: client connected for address $address")
-            /* // 'Send to all server with ids'
-               clients.put(freeId.toString(), endPoint)
-               endPoint.sendMsg("id: $freeId")
-               freeId += 1 */
-        }
-
-    })
-    if (connected) {
-        println("SERVER: listing to address $address")
-    }
-}
 private fun createAndStartClient1(sn: SimpleNetwork): EndPoint? {
     println("========= Start up client 1 ========= ")
     val clientEndPoint1 = sn.connect(address,
