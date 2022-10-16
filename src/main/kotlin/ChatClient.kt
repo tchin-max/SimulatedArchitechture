@@ -34,7 +34,7 @@ class ChatClient(sn: SimpleNetwork, val name: String, onData: (endPoint: EndPoin
     // high level chat api for clients
     fun sendMessage(toId: Int, msg: String) {
         if (id >= 0) {
-            this.sendData(SendMessage(msg, toId, 5))
+            this.sendData(SendMessage(msg, toId, id))
         }
     }
 
