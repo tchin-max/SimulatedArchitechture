@@ -15,6 +15,10 @@ class ChatServer(sn: SimpleNetwork, address: String) {
 
             }
 
+            override fun onData(endPoint: EndPoint, data: Any) {
+                println("SERVER ($address), got data: '$data'")
+            }
+
             override fun onClose(endPoint: EndPoint) {
                 println("SERVER ($address): closed")
             }
@@ -23,7 +27,7 @@ class ChatServer(sn: SimpleNetwork, address: String) {
                 println("SERVER ($address): client connected.")
                 // 'Send to all server with ids'
                 clients.put(freeId.toString(), endPoint)
-                endPoint.sendMsg("id: $freeId")
+                endPoint.sendData(AssignId(freeId))
                 freeId += 1
             }
 
@@ -34,3 +38,6 @@ class ChatServer(sn: SimpleNetwork, address: String) {
 
     }
 }
+
+data class AssignId(val id: Int)
+data class SendMessage(val msg: String, val id: Int)

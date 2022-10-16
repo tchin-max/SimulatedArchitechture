@@ -8,11 +8,13 @@ interface Network {
 }
 interface ConnectionHandler {
     fun onMsg(endPoint: EndPoint, msg: String)
+    fun onData(endPoint: EndPoint, data: Any)
     fun onClose(endPoint: EndPoint)
     fun onOpen(endPoint: EndPoint)
 }
 interface EndPoint {
     fun sendMsg(msg: String): Unit
+    fun sendData(o: Any)
     fun close()
 }
 
@@ -28,6 +30,7 @@ class SimpleNetwork : Network {
             val clientEndPoint = nc.leftEndPoint
             nc.connectLeftSide(
                 { msg -> clientEndPoint.let { handler.onMsg(it, msg) } },
+                { o -> clientEndPoint.let { handler.onData(it, o) }},
                 { clientEndPoint.let {handler.onClose(it) } },
                 { handler.onOpen(clientEndPoint) })
             log("sn: Connection created by network for the address $address, and an endpoint is provided to the client.")
@@ -63,6 +66,7 @@ class SimpleNetwork : Network {
 
 }
 private typealias MsgSender = (msg: String) -> Unit
+private typealias DataSender = (o: Any) -> Unit
 private interface ConnectionProvider {
     fun open(): NetworkConnection
 }
@@ -70,10 +74,12 @@ private class SimpleNetworkConnectionProvider(private val handler: ConnectionHan
     override fun open(): NetworkConnection {
         val snc = SimpleNetworkConnection()
         var rightEndPoint: EndPoint? = snc.rightEndPoint
-        snc.connectRightSide({
-            msg -> log("ncp, got msg: $msg")
+        snc.connectRightSide({ msg ->
+            log("ncp, got msg: $msg")
             rightEndPoint?.let { handler.onMsg(it, msg) }
-         }, {
+        }, { o ->
+            rightEndPoint?.let { handler.onData(it, o) }
+        }, {
             log("ncp: onClose")
             rightEndPoint?.let {
                 handler.onClose(it)
@@ -91,22 +97,28 @@ private class SimpleNetworkConnectionProvider(private val handler: ConnectionHan
 
 }
 private interface NetworkConnection {
-    fun connectLeftSide(receiver: MsgSender, onClose: () -> Unit, onOpen: () -> Unit)
-    fun connectRightSide(receiver: MsgSender, onClose: () -> Unit, onOpen: () -> Unit)
+    fun connectLeftSide(receiver: MsgSender, dataReceiver: DataSender, onClose: () -> Unit, onOpen: () -> Unit)
+    fun connectRightSide(receiver: MsgSender, dataReceiver: DataSender, onClose: () -> Unit, onOpen: () -> Unit)
     val leftEndPoint: EndPoint
     val rightEndPoint: EndPoint
 }
 class SimpleNetworkConnection : NetworkConnection {
     private var closed: Boolean = false
-    var leftReceiver: MsgSender? = null
+    var leftMsgReceiver: MsgSender? = null
+    var leftDataReceiver: DataSender? = null
     var leftOnClose : (() -> Unit)? = null
-    var rightReceiver: MsgSender? = null
+    var rightMsgReceiver: MsgSender? = null
+    var rightDataReceiver: DataSender? = null
     var rightOnClose : (() -> Unit)? = null
     var leftOnOpen: (() -> Unit)? = null
     var rightOnOpen: (() -> Unit)? = null
     public override val leftEndPoint: EndPoint = object : EndPoint {
         override fun sendMsg(msg: String) {
-            rightReceiver?.let { lr -> lr(msg) }
+            rightMsgReceiver?.let { lr -> lr(msg) }
+        }
+
+        override fun sendData(o: Any) {
+            rightDataReceiver?.let { it(o) }
         }
 
         override fun close() {
@@ -116,7 +128,11 @@ class SimpleNetworkConnection : NetworkConnection {
     }
     public override val rightEndPoint: EndPoint = object : EndPoint {
         override fun sendMsg(msg: String) {
-            leftReceiver?.let { rr -> rr(msg) }
+            leftMsgReceiver?.let { rr -> rr(msg) }
+        }
+
+        override fun sendData(o: Any) {
+            leftDataReceiver?.let { it(o) }
         }
 
         override fun close() {
@@ -125,23 +141,25 @@ class SimpleNetworkConnection : NetworkConnection {
 
     }
 
-    override fun connectLeftSide(receiver: MsgSender, onClose: () -> Unit, onOpen: () -> Unit) {
-        leftReceiver = receiver
+    override fun connectLeftSide(msgRec: MsgSender, dataRec: DataSender, onClose: () -> Unit, onOpen: () -> Unit) {
+        leftMsgReceiver = msgRec
+        leftDataReceiver = dataRec
         this.leftOnClose = onClose
         this.leftOnOpen = onOpen
 
-        if (leftReceiver != null && rightReceiver != null) {
+        if (leftMsgReceiver != null && rightMsgReceiver != null) {
             this.leftOnOpen?.let { it() }
             this.rightOnOpen?.let { it() }
         }
     }
 
-    override fun connectRightSide(receiver: MsgSender, onClose: () -> Unit, onOpen: () -> Unit) {
-        rightReceiver = receiver
+    override fun connectRightSide(msgRec: MsgSender, dataRec: DataSender, onClose: () -> Unit, onOpen: () -> Unit) {
+        rightMsgReceiver = msgRec
+        rightDataReceiver = dataRec
         this.rightOnClose = onClose
         this.rightOnOpen = onOpen
 
-        if (leftReceiver != null && rightReceiver != null) {
+        if (leftMsgReceiver != null && rightMsgReceiver != null) {
             this.leftOnOpen?.let { it() }
             this.rightOnOpen?.let { it() }
         }
@@ -152,8 +170,8 @@ class SimpleNetworkConnection : NetworkConnection {
         this.leftOnClose?.let { it() }
         this.rightOnClose = null
         this.leftOnClose = null
-        this.leftReceiver = null
-        this.rightReceiver = null
+        this.leftMsgReceiver = null
+        this.rightMsgReceiver = null
         this.leftOnOpen = null
         this.rightOnOpen = null
         this.closed = true

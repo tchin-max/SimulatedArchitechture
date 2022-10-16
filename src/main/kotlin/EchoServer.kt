@@ -8,6 +8,10 @@ class EchoServer(val sn: SimpleNetwork, val address: String) {
                 endPoint.sendMsg("<$msg>")
             }
 
+            override fun onData(endPoint: EndPoint, data: Any) {
+                TODO("Not yet implemented")
+            }
+
             override fun onClose(endPoint: EndPoint) {
                 println("SERVER: closed")
             }

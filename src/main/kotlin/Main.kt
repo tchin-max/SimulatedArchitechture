@@ -12,6 +12,7 @@ fun main(args: Array<String>) {
     println("========= Sending data ========= ")
     clientEndPoint1?.sendMsg("Test 1")
     clientEndPoint2?.sendMsg("Test 2")
+    clientEndPoint2?.sendData(5)
 }
 
 private fun createAndStartServer(sn: SimpleNetwork) {
@@ -30,6 +31,10 @@ private fun createAndStartServer(sn: SimpleNetwork) {
 
             /* 'Send to all server with ids'
               clients.values.forEach { client -> client.sendMsg("<$msg>") } */
+        }
+
+        override fun onData(endPoint: EndPoint, data: Any) {
+            println("SERVER, got msg: '$data'")
         }
 
         override fun onClose(endPoint: EndPoint) {
@@ -62,6 +67,10 @@ private fun createAndStartClient1(sn: SimpleNetwork): EndPoint? {
                 println("CLIENT1: got msg: '$msg'")
             }
 
+            override fun onData(endPoint: EndPoint, data: Any) {
+                println("CLIENT1: got data: '$data'")
+            }
+
             override fun onClose(endPoint: EndPoint) {
                 println("CLIENT1: connection on client side closed")
             }
@@ -88,6 +97,10 @@ private fun createAndStartClient2(sn: SimpleNetwork): EndPoint? {
                     responded = true
                     endPoint.sendMsg("Hi there, I like to talk a lot.")
                 }
+            }
+
+            override fun onData(endPoint: EndPoint, data: Any) {
+                println("CLIENT1: got data: '$data'")
             }
 
             override fun onClose(endPoint: EndPoint) {
