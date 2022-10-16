@@ -29,7 +29,7 @@ class ChatServer(sn: SimpleNetwork, address: String) {
 
         })
         if (connected) {
-            println("SERVER: listing to address $address")
+            println("SERVER ($address) started, listing to address $address")
         }
 
     }

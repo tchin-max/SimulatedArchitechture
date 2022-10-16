@@ -4,7 +4,7 @@ fun main(args: Array<String>) {
 
     val sn = SimpleNetwork()
 
-    createAndStartServer(sn)
+    val cs: ChatServer = ChatServer(sn, address)
 
     val clientEndPoint1 = createAndStartClient1(sn)
     val clientEndPoint2 = createAndStartClient2(sn)
