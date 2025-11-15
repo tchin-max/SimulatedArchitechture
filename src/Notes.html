@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <title>Simulated Architectures – Dokumentation (A1–A4)</title>
+
+    <style>
+        body {
+            font-family: system-ui, -apple-system, Roboto, Segoe UI, Helvetica, Arial;
+            line-height: 1.6;
+            margin: 40px;
+            max-width: 900px;
+        }
+        h1, h2, h3 {
+            color: #222;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        code {
+            font-family: monospace;
+        }
+        .toc a { text-decoration: none; }
+        .section { margin-top: 60px; }
+        table { border-collapse: collapse; }
+        td, th { padding: 6px 10px; }
+    </style>
+</head>
+
+<body>
+
+<h1>Dokumentation: Simulierte Netzwerkarchitekturen (A1–A4)</h1>
+<p>Autor: &lt;Dein Name&gt;<br>
+    Modul: Softwarearchitekturen / Verteilte Systeme</p>
+
+<hr>
+
+<h2>Inhaltsverzeichnis</h2>
+<ul class="toc">
+    <li><a href="#intro">1. Einleitung</a></li>
+    <li><a href="#networkconnection">2. Netzwerkarchitektur (NetworkConnection.kt)</a></li>
+    <li><a href="#a1">3. Aufgabe A1 – EchoServer</a></li>
+    <li><a href="#a2">4. Aufgabe A2 – ChatServer (IDs & Routing)</a></li>
+    <li><a href="#a3">5. Aufgabe A3 – ChatClient & sendData</a></li>
+    <li><a href="#main">6. Main.kt – Gesamtablauf</a></li>
+    <li><a href="#a4">7. Aufgabe A4 – Broker-Architektur (ausführliche Implementierung)</a></li>
+    <li><a href="#summary">8. Zusammenfassung</a></li>
+</ul>
+
+<hr>
+
+<div class="section" id="intro">
+    <h2>1. Einleitung</h2>
+    <p>
+        Dieses Dokument erklärt das im Repository vorhandene simulierte Nachrichtensystem.
+        Die Aufgaben A1–A3 sind vollständig implementiert, und in diesem Dokument werden
+        sie ausführlich beschrieben.
+        Anschließend folgt die **komplette Implementierung der Broker-Architektur (A4)**,
+        welche die komplexeste Aufgabe darstellt und reale verteilte Systeme nachbildet.
+    </p>
+
+    <p>Alle Aufgaben basieren auf dem Framework <code>NetworkConnection.kt</code>, welches
+        ein Client/Server-Netzwerk simuliert.</p>
+</div>
+
+<hr>
+
+<div class="section" id="networkconnection">
+    <h2>2. Netzwerkarchitektur (NetworkConnection.kt)</h2>
+
+    <h3>2.1 Überblick</h3>
+    <p>
+        Das Framework simuliert ein echtes Netzwerk, ohne niedrige Netzwerkebene (TCP/Sockets).
+        Stattdessen verbindet es Komponenten über zwei virtuelle Endpunkte:
+    </p>
+
+    <ul>
+        <li><strong>leftEndPoint</strong> – Client</li>
+        <li><strong>rightEndPoint</strong> – Server</li>
+    </ul>
+
+    <h3>2.2 Network-Interface</h3>
+    <pre><code>interface Network {
+    fun connect(address: String, handler: ConnectionHandler): EndPoint?
+    fun provide(address: String, handler: ConnectionHandler): Boolean
+    fun remove(address: String, handler: ConnectionHandler): Boolean
+}
+</code></pre>
+    <p><strong>provide()</strong> registriert einen Server auf einer Adresse.
+        <strong>connect()</strong> verbindet einen Client mit dieser Adresse.</p>
+
+    <h3>2.3 ConnectionHandler</h3>
+    <p>Jede Verbindung arbeitet über diese Callbacks:</p>
+
+    <pre><code>onOpen(endPoint)
+onMsg(endPoint, msg: String)
+onData(endPoint, data: Any)
+onClose(endPoint)
+</code></pre>
+
+    <h3>2.4 EndPoint</h3>
+    <pre><code>fun sendMsg(msg: String)
+fun sendData(o: Any)
+fun close()
+</code></pre>
+    <p>EndPoint ist das „virtuelle Kabel“ zwischen Client und Server.</p>
+
+    <h3>2.5 Datenfluss (schematisch)</h3>
+    <pre><code>[Client Handler] &lt;-- leftEndPoint --- rightEndPoint --&gt; [Server Handler]
+</code></pre>
+
+    <p>Nachrichten laufen so:</p>
+
+    <table border="1" cellpadding="5">
+        <tr><th>Sender</th><th>Ziel</th><th>Mechanismus</th></tr>
+        <tr><td>Client</td><td>Server</td><td>leftEndPoint.sendX → rightReceiver</td></tr>
+        <tr><td>Server</td><td>Client</td><td>rightEndPoint.sendX → leftReceiver</td></tr>
+    </table>
+
+    <p>
+        Die gesamte Netzwerklogik ist robust und garantiert:
+        Sobald beide Seiten registriert sind, ruft das System <code>onOpen()</code> auf.
+    </p>
+
+
+</div>
+
+<hr>
+
+<div class="section" id="a1">
+    <h2>3. Aufgabe A1 – EchoServer</h2>
+
+    <h3>3.1 Zweck</h3>
+    <p>
+        Der EchoServer zeigt die einfachste Art der Kommunikation:
+        Er schickt jede Nachricht wieder an den Client zurück.
+    </p>
+
+    <h3>3.2 Nachrichtenzustellung</h3>
+
+    <pre><code>override fun onMsg(endPoint: EndPoint, msg: String) {
+    println("SERVER, got msg: '$msg'")
+    endPoint.sendMsg("&lt;$msg&gt;")
+}
+</code></pre>
+
+
+    <h3>3.3 Ablaufdiagramm</h3>
+
+    <pre><code>
+Client                       Server
+  | ------ sendMsg("Hi") -----> |
+  |                             |
+  | <----- "&lt;Hi&gt;" ------------- |
+</code></pre>
+
+</div>
+
+<hr>
+
+<div class="section" id="a2">
+    <h2>4. Aufgabe A2 – ChatServer (IDs & Routing)</h2>
+
+    <h3>4.1 Zielsetzung</h3>
+    <ul>
+        <li>Server vergibt Client-IDs</li>
+        <li>Speichert alle EndPoints</li>
+        <li>Routet Nachrichten mit <code>SendMessage</code></li>
+    </ul>
+
+    <h3>4.2 Zuweisung einer neuen ID</h3>
+    <pre><code>endPoint.sendData(AssignId(freeId))
+</code></pre>
+
+    <h3>4.3 Routing</h3>
+    <pre><code>
+if (fromId == data.fromId) {
+    client?.sendData(data)
+}
+</code></pre>
+    <img src="Netzwerk.svg" alt="Architekturdiagramm" style="width: 100%; max-width: 800px;">
+</div>
+
+<hr>
+
+<div class="section" id="a3">
+    <h2>5. Aufgabe A3 – ChatClient & sendData()</h2>
+
+    <h3>5.1 Ziel</h3>
+    <p>Der Client reagiert auf Daten-Objekte:</p>
+    <pre><code>
+override fun onData(endPoint: EndPoint, data: Any) {
+    when (data) {
+        is AssignId -> id = data.id
+        is SendMessage -> println("msg: ${data.msg}")
+    }
+}
+</code></pre>
+
+    <h3>5.2 High-Level API</h3>
+
+    <pre><code>
+fun sendMessage(toId: Int, msg: String) {
+    sendData(SendMessage(msg, toId, id))
+}
+</code></pre>
+
+</div>
+
+<hr>
+
+<div class="section" id="main">
+    <h2>6. Main.kt – Gesamtablauf</h2>
+
+    <h3>6.1 Übersicht</h3>
+    <ol>
+        <li>Network wird angelegt</li>
+        <li>ChatServer wird registriert</li>
+        <li>Clients verbinden sich</li>
+        <li>IDs werden verteilt</li>
+        <li>Nachrichten werden gesendet</li>
+    </ol>
+
+</div>
+
+<hr>
+
+<div class="section" id="a4">
+    <h2>7. Aufgabe A4 – Broker-Architektur (Ausführliche Version)</h2>
+
+    <h3>7.1 Motivation</h3>
+    <p>
+        In modernen verteilten Systemen kommunizieren Komponenten <strong>nicht</strong> direkt miteinander.
+        Stattdessen wird ein Vermittler – ein sogenannter <b>Message Broker</b> – verwendet.
+        Dieser übernimmt Aufgaben wie:
+    </p>
+
+    <ul>
+        <li>Routing</li>
+        <li>Entkopplung von Komponenten</li>
+        <li>Typbasierte Weiterleitung</li>
+        <li>Registrierung von Services</li>
+    </ul>
+
+    <p>A4 simuliert diesen Aufbau vollständig.</p>
+
+    <h3>7.2 Grundprinzip der Architektur</h3>
+
+    <p>
+        Alle Komponenten kennen genau eine Adresse:
+    </p>
+
+    <pre><code>
+broker://local
+</code></pre>
+
+    <p>
+        Wichtige Regel:</p>
+
+    <p>
+        <b>Keine Komponente darf wissen, wo Payment, Shipping oder IMAP liegen.</b>
+        Alles geht über den Broker.
+    </p>
+
+    <h3>7.3 Registrierung beim Broker</h3>
+
+    <p>
+        Beim Aufbau einer Verbindung sendet jede Komponente:</p>
+
+    <pre><code>MsgRegister("order")
+MsgRegister("payment")
+MsgRegister("shipping")
+MsgRegister("imap")
+</code></pre>
+
+    <p>Dadurch weiß der Broker:</p>
+
+    <pre><code>
+components["order"]    = EndPoint(Order)
+components["payment"]  = EndPoint(Payment)
+components["shipping"] = EndPoint(Shipping)
+components["imap"]     = EndPoint(IMAP)
+</code></pre>
+
+
+    <h3>7.4 Nachrichtentypen im System</h3>
+
+    <pre><code>
+data class PaymentRequest(val corrId: String, val account: String, val amount: Double)
+data class PaymentResponse(val corrId: String, val success: Boolean)
+
+data class ShipRequest(val corrId: String, val items: List<String>)
+data class ShipResponse(val corrId: String, val success: Boolean)
+
+data class Mail(val to: String, val subject: String, val body: String)
+</code></pre>
+
+    <p>
+        Alle Nachrichten werden mit <code>sendData(o)</code> versendet.
+    </p>
+
+
+    <h3>7.5 Komponenten im Detail</h3>
+
+    <h4>OrderComponent</h4>
+    <p>
+        Bietet zentrale API:
+    </p>
+
+    <pre><code>
+fun startOrder(items: List&lt;String&gt;, account: String)
+</code></pre>
+
+    <p>Ablauf:</p>
+    <ol>
+        <li>Generiere Korrelation-ID</li>
+        <li>Sende <code>PaymentRequest</code></li>
+        <li>Bei Erfolg: <code>ShipRequest</code></li>
+        <li>Bei Erfolg: E-Mail an Kunde (über IMAP)</li>
+    </ol>
+
+
+    <h4>PaymentComponent</h4>
+    <p>Nimmt PaymentRequest entgegen, entscheidet Erfolg oder Fehlschlag.</p>
+
+    <h4>ShippingComponent</h4>
+    <p>Erstellt Versandbestätigungen.</p>
+
+    <h4>IMAPComponent</h4>
+    <p>Simuliert E-Mail-Versand.</p>
+
+
+    <h3>7.6 Sequenzdiagramm (vollständig)</h3>
+
+    <pre><code>
+Order.startOrder(items, account)
+    |
+    |-- PaymentRequest ----------------> Broker
+    |                                    |
+    |                        Broker → Payment
+    |                                    |
+    |<------- PaymentResponse -----------|
+    |
+Wenn Erfolg:
+    |-- ShipRequest --------------------> Broker
+    |                                    |
+    |                        Broker → Shipping
+    |                                    |
+    |<-------- ShipResponse -------------|
+    |
+    |-- Mail ---------------------------> Broker
+                                 Broker → IMAP
+</code></pre>
+
+
+    <h3>7.7 Vollständiger Ablauf (Beschreibung)</h3>
+
+    <p>
+        1. Der Nutzer ruft <code>startOrder()</code> auf.
+        2. Order sendet PaymentRequest.
+        3. Broker erkennt den Nachrichtentyp → leitet an Payment weiter.
+        4. Payment antwortet mit PaymentResponse.
+        5. Order reagiert auf Erfolg → sendet ShipRequest.
+        6. Broker leitet an Shipping weiter.
+        7. Shipping antwortet → Order verarbeitet Antwort.
+        8. Order sendet abschließend ein <code>Mail</code>-Objekt.
+        9. Broker leitet Mail an IMAP weiter.
+    </p>
+    <img src="Broker.svg" alt="Architekturdiagramm" style="width: 100%; max-width: 800px;">
+
+
+    <h3>7.8 Abgrenzung zu A1–A3</h3>
+    <table border="1" cellpadding="5">
+        <tr><th>Aufgabe</th><th>Art der Kommunikation</th></tr>
+        <tr><td>A1</td><td>Einfacher Echo-Mechanismus</td></tr>
+        <tr><td>A2</td><td>Punkt-zu-Punkt Kommunikation über IDs</td></tr>
+        <tr><td>A3</td><td>Objektbasierte Kommunikation</td></tr>
+        <tr><td><b>A4</b></td><td><b>Komplettes Nachrichten-Ökosystem über Broker</b></td></tr>
+    </table>
+
+
+    <h3>7.9 Wichtige Designentscheidungen</h3>
+    <ul>
+        <li>Typbasierte Weiterleitung durch <code>when (data)</code></li>
+        <li>Kein Wissensverlust: Jede Komponente kennt nur Broker</li>
+        <li>Flexibilität: Neue Komponenten könnten einfach hinzugefügt werden</li>
+        <li>Korrelation über <code>corrId</code></li>
+    </ul>
+
+
+    <h3>7.10 Zusammenfassung des A4-Systems</h3>
+    <p>
+        Das A4-System bildet eine realistische, entkoppelte Microservice-Architektur nach:
+    </p>
+    <ul>
+        <li>Order orchestriert</li>
+        <li>Payment autorisiert</li>
+        <li>Shipping liefert</li>
+        <li>IMAP benachrichtigt</li>
+        <li>Broker vermittelt und entkoppelt</li>
+    </ul>
+
+    <p>
+        Damit ist ein vollständiger Bestellprozess modelliert, der sich leicht erweitern lässt.
+    </p>
+
+</div>
+
+<hr>
+
+<div class="section" id="summary">
+    <h2>8. Zusammenfassung</h2>
+
+    <p>
+        Dieses Dokument beschreibt die vollständige Reise von einfachen
+        Echo-Nachrichten (A1), über Routing-Logiken mit IDs (A2) und objektorientierter
+        Kommunikation (A3), bis hin zu einem realitätsnahen verteilten System (A4).
+    </p>
+
+    <p>
+        Die finale Broker-Architektur zeigt, wie moderne Systeme Nachrichten routen und
+        Services lose koppeln, und sie bildet einen professionellen Softwareentwurf nach.
+    </p>
+
+</div>
+
+</body>
+</html>
